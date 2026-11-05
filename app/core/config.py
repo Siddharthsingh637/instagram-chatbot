@@ -1,7 +1,8 @@
 """Application configuration loaded from environment variables using Pydantic Settings."""
 
+import json
 from functools import lru_cache
-from typing import List, Literal, Optional
+from typing import List, Literal, Optional, Union
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -45,20 +46,28 @@ class Settings(BaseSettings):
     MESSAGE_RETENTION_HOURS: int = 6
     REPLY_COOLDOWN_SECONDS: int = 10
     MAX_CONTEXT_MESSAGES: int = 15
-    HANDOFF_KEYWORDS: List[str] = Field(
+    HANDOFF_KEYWORDS: Union[List[str], str] = Field(
         default_factory=lambda: ["human", "agent", "real person"],
         description="List of keywords triggering human handoff.",
     )
-    AUTO_APPROVED_MEMORY_CATEGORIES: List[str] = Field(
+    AUTO_APPROVED_MEMORY_CATEGORIES: Union[List[str], str] = Field(
         default_factory=list,
         description="Optional list of memory categories to automatically approve.",
     )
 
-    @field_validator("HANDOFF_KEYWORDS", "AUTO_APPROVED_MEMORY_CATEGORIES", mode="before")
+    @field_validator("HANDOFF_KEYWORDS", "AUTO_APPROVED_MEMORY_CATEGORIES", mode="after")
     @classmethod
     def parse_list_strings(cls, v: object) -> List[str]:
-        """Convert comma-separated string to list if necessary."""
+        """Convert string or list into List[str], handling comma strings, JSON, or lists."""
         if isinstance(v, str):
+            v_str = v.strip()
+            if v_str.startswith("[") and v_str.endswith("]"):
+                try:
+                    loaded = json.loads(v_str)
+                    if isinstance(loaded, list):
+                        return [str(item).strip().lower() for item in loaded if str(item).strip()]
+                except Exception:
+                    pass
             return [item.strip().lower() for item in v.split(",") if item.strip()]
         if isinstance(v, list):
             return [str(item).strip().lower() for item in v if str(item).strip()]

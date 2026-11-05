@@ -21,7 +21,7 @@ class InstagramSender:
         http_client: Optional[httpx.Client] = None,
     ):
         settings = get_settings()
-        self.access_token = access_token or settings.INSTAGRAM_ACCESS_TOKEN
+        self.access_token = access_token if access_token is not None else settings.INSTAGRAM_ACCESS_TOKEN
         self.graph_api_version = graph_api_version or settings.GRAPH_API_VERSION
         self.http_client = http_client or httpx.Client(timeout=10.0)
         self.endpoint = f"https://graph.facebook.com/{self.graph_api_version}/me/messages"
